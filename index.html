@@ -259,7 +259,17 @@ async function performSearch() {
   
   const isPhone = /^\d+$/.test(rawInput);
   const normalizedInput = normalizeArabic(rawInput);
-  
+
+  if (isPhone) {
+    if (rawInput.length !== 11) {
+      resultBox.innerHTML = `
+        <p style="text-align:center; color:#7a1b1b; font-weight:600;">
+          ⚠️ من فضلك أدخل رقم التليفون كاملًا المكون من 11 رقم.
+        </p>
+      `;
+      return;
+    }
+}
   if (!isPhone) {
     const words = normalizedInput.split(' ').filter(w => w.length > 0);
     if (words.length < 2) {
@@ -268,12 +278,21 @@ async function performSearch() {
     }
   }
   
-  const matched = students.filter(s => {
-    const name = normalizeArabic(s.full_name || '');
-    const phone = s.phone || '';
-    return name.includes(normalizedInput) || phone.includes(rawInput);
-  });
-  
+const matched = students.filter(s => {
+  const name = normalizeArabic(s.full_name || '');
+
+  let phone = String(s.phone || '').trim();
+
+  if (phone.length === 10) {
+    phone = '0' + phone;
+  }
+
+  if (isPhone) {
+    return phone === rawInput;
+  }
+
+  return name.includes(normalizedInput);
+});
   if (matched.length === 0) {
     resultBox.innerHTML = `<p style="text-align:center; color:#7a1b1b; padding:20px;">🔍 لا توجد نتائج مطابقة لـ "${rawInput}" في ${currentTerm === 'first' ? 'الترم الأول' : 'الترم الثاني'}.</p>`;
     return;
