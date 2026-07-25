@@ -23,6 +23,54 @@
     .search-card { background: #ffffff; padding: 40px; border-radius: 15px; box-shadow: 0 10px 30px rgba(0, 0, 0, 0.08); max-width: 550px; width: 100%; text-align: center; }
     .search-title { color: #7a1b1b; font-size: 26px; font-weight: 700; margin-bottom: 20px; display: flex; align-items: center; justify-content: center; gap: 12px; }
     .search-icon { font-size: 24px; }
+    
+    .term-selector { 
+      display: flex; 
+      gap: 20px; 
+      justify-content: center; 
+      margin-bottom: 30px;
+      background: #f8f3e8;
+      padding: 12px 20px;
+      border-radius: 60px;
+      width: fit-content;
+      margin-left: auto;
+      margin-right: auto;
+    }
+    .term-option { 
+      font-size: 18px; 
+      font-weight: 600; 
+      padding: 8px 28px; 
+      border-radius: 40px; 
+      cursor: pointer; 
+      transition: all 0.3s ease;
+      background: #e9e2d4;
+      color: #4a0e0e;
+      border: none;
+      font-family: 'Cairo', sans-serif;
+    }
+    .term-option.active { 
+      background: #7a1b1b; 
+      color: white; 
+      box-shadow: 0 4px 10px rgba(0,0,0,0.15);
+    }
+    .term-option[data-term="second"].active { background: #1b5e3f; }
+    .term-badge {
+      display: inline-block;
+      background: #7a1b1b;
+      color: white;
+      padding: 5px 15px;
+      border-radius: 30px;
+      font-size: 14px;
+      margin-right: 12px;
+      vertical-align: middle;
+    }
+    .loading-indicator {
+      text-align: center;
+      color: #7a1b1b;
+      font-weight: 600;
+      margin-top: 15px;
+      display: none;
+    }
     input { width: 100%; padding: 15px; font-size: 18px; font-family: 'Cairo', sans-serif; border: 1px solid #ddd; border-radius: 8px; outline: none; margin-bottom: 20px; text-align: right; background-color: #fff; color: #555; }
     input::placeholder { color: #aaa; }
     button { width: 100%; padding: 12px; font-size: 20px; font-family: 'Cairo', sans-serif; font-weight: 600; background-color: #7a1b1b; color: white; border: none; border-radius: 8px; cursor: pointer; transition: background 0.3s; }
@@ -30,16 +78,20 @@
 
     #result { margin-top: 30px; width: 100%; max-width: 550px; }
     .student-card { background: white; padding: 20px; border-radius: 12px; margin-bottom: 15px; border-right: 5px solid #7a1b1b; box-shadow: 0 4px 12px rgba(0,0,0,0.05); }
+    .term2-border { border-right-color: #1b5e3f; }
+    .total-box { background: #f0efe7; padding: 10px; border-radius: 8px; margin-top: 10px; text-align: center; }
+    .total-first { color: #7a1b1b; }
+    .total-both { color: #1b5e3f; }
 
     footer { background-color: #4a0e0e; color: #fff; text-align: center; padding: 12px; font-size: 15px; }
 
-    @media (max-width: 768px) { header { padding: 10px 20px; } .quote { font-size: 22px; } .header-title { font-size: 18px; } .search-card { padding: 25px; } }
+    @media (max-width: 768px) { header { padding: 10px 20px; } .quote { font-size: 22px; } .header-title { font-size: 18px; } .search-card { padding: 25px; } .term-option { padding: 6px 20px; font-size: 16px; } }
   </style>
 </head>
 <body>
 
 <header>
-  <a href="#" class="search-link">Search</a>
+  <a href="#" class="search-link"></a>
   <h1 class="header-title">StJohnDeaconSchool</h1>
   <div class="header-logos">
     <img src="st john church logo - gold2.png" alt="Logo 1" />
@@ -52,7 +104,15 @@
     "أَيُّهَا الْحَبِيبُ، فِي كُلِّ شَيْءٍ أَرُومُ أَنْ تَكُونَ نَاجِحًا وَصَحِيحًا، كَمَا أَنَّ نَفْسَكَ نَاجِحَةٌ." (3 يو 1:2)
   </p>
   
-  <p class="subtitle">نتيجة مدرسة الشمامسة الترم الاول عام 2025-2026م</p>
+  <p class="subtitle">
+    نتيجة مدرسة الشمامسة 
+    <span id="termDisplayText" class="term-badge">الترم الأول 2025-2026م</span>
+  </p>
+
+  <div class="term-selector" id="termSelector">
+    <button class="term-option active" data-term="first"> الترم الأول</button>
+    <button class="term-option" data-term="second"> الترم الثاني</button>
+  </div>
 
   <div class="search-card">
     <h2 class="search-title">
@@ -61,10 +121,11 @@
     </h2>
     
     <input type="text" id="searchInput" placeholder="اكتب اسمك أو رقم التليفون" autocomplete="off" />
-    <button onclick="search()">عرض النتيجة</button>
+    <button onclick="performSearch()">عرض النتيجة</button>
   </div>
 
   <div id="result"></div>
+  <div id="loadingIndicator" class="loading-indicator">⏳ جاري تحميل البيانات...</div>
 </main>
 
 <footer>
@@ -72,19 +133,17 @@
 </footer>
 
 <script>
-let students = [];
+let currentTerm = 'first';
+let term1Data = [];
+let term2Data = [];
+let term1Loaded = false;
+let term2Loaded = false;
 
-/* تحميل البيانات */
-async function loadData() {
-  try {
-    const response = await fetch('students.json');
-    students = await response.json();
-  } catch (error) {
-    console.error('Error loading data:', error);
-  }
+function showLoading(show) {
+  const loader = document.getElementById('loadingIndicator');
+  if (loader) loader.style.display = show ? 'block' : 'none';
 }
 
-/* توحيد الحروف العربية */
 function normalizeArabic(text) {
   if (!text) return '';
   return text
@@ -92,110 +151,237 @@ function normalizeArabic(text) {
     .replace(/[إأآ]/g, 'ا')
     .replace(/ى/g, 'ي')
     .replace(/ة/g, 'ه')
-    .replace(/[ًٌٍَُِّْ]/g, '') // إزالة التشكيل
+    .replace(/[ًٌٍَُِّْ]/g, '')
     .replace(/\s+/g, ' ')
     .trim();
 }
 
-/* البحث */
-function search() {
+async function loadTerm1() {
+  if (term1Loaded) return;
+  showLoading(true);
+  try {
+    const res = await fetch('students-1stTerm.json');
+    if (!res.ok) throw new Error();
+    term1Data = await res.json();
+    term1Loaded = true;
+  } catch(e) {
+    term1Data = [];
+    term1Loaded = true;
+  }
+  showLoading(false);
+}
+
+async function loadTerm2() {
+  if (term2Loaded) return;
+  showLoading(true);
+  try {
+    const res = await fetch('students-2ndTerm.json');
+    if (!res.ok) throw new Error();
+    term2Data = await res.json();
+    term2Loaded = true;
+  } catch(e) {
+    term2Data = [];
+    term2Loaded = true;
+  }
+  showLoading(false);
+}
+
+async function switchTerm(term) {
+  if (term === currentTerm) return;
+  
+  currentTerm = term;
+  
+  const firstBtn = document.querySelector('.term-option[data-term="first"]');
+  const secondBtn = document.querySelector('.term-option[data-term="second"]');
+  const termBadge = document.getElementById('termDisplayText');
+  
+  if (term === 'first') {
+    firstBtn.classList.add('active');
+    secondBtn.classList.remove('active');
+    termBadge.innerHTML = 'الترم الأول 2025-2026م';
+    termBadge.style.background = "#7a1b1b";
+    await loadTerm1();
+  } else {
+    secondBtn.classList.add('active');
+    firstBtn.classList.remove('active');
+    termBadge.innerHTML = 'الترم الثاني 2025-2026م';
+    termBadge.style.background = "#1b5e3f";
+    await loadTerm2();
+  }
+  
+  document.getElementById('result').innerHTML = '';
+  document.getElementById('searchInput').value = '';
+}
+
+function getCurrentData() {
+  return currentTerm === 'first' ? term1Data : term2Data;
+}
+
+// جلب مجموع الترم الأول لطالب معين عن طريق رقم الهاتف أو الاسم
+function getFirstTermTotal(phone, name) {
+  if (!term1Data || term1Data.length === 0) return null;
+  
+  const normalizedSearchPhone = phone.toString();
+  const normalizedSearchName = normalizeArabic(name || '');
+  
+  const student = term1Data.find(s => {
+    const sPhone = s.phone || '';
+    const sName = normalizeArabic(s.full_name || '');
+    return sPhone === normalizedSearchPhone || sName === normalizedSearchName;
+  });
+  
+  if (student && student.total && student.total !== '-') {
+    const totalNum = parseInt(student.total);
+    return isNaN(totalNum) ? null : totalNum;
+  }
+  return null;
+}
+
+async function performSearch() {
   const inputField = document.getElementById('searchInput');
   const resultBox = document.getElementById('result');
-
   const rawInput = inputField.value.trim();
-  if (!rawInput) return;
-
+  
+  if (!rawInput) {
+    resultBox.innerHTML = `<p style="text-align:center; color:#7a1b1b;">من فضلك أدخل اسم أو رقم تليفون للبحث</p>`;
+    return;
+  }
+  
+  if (currentTerm === 'first' && !term1Loaded) await loadTerm1();
+  if (currentTerm === 'second' && !term2Loaded) await loadTerm2();
+  
+  const students = getCurrentData();
+  
+  if (!students || students.length === 0) {
+    resultBox.innerHTML = `<p style="text-align:center; color:#7a1b1b;">لا توجد بيانات متاحه</p>`;
+    return;
+  }
+  
   const isPhone = /^\d+$/.test(rawInput);
   const normalizedInput = normalizeArabic(rawInput);
-
-  // 🔴 لو اسم (مش رقم) لازم يكون ثنائي
+  
   if (!isPhone) {
-    const words = normalizedInput.split(' ');
+    const words = normalizedInput.split(' ').filter(w => w.length > 0);
     if (words.length < 2) {
-      resultBox.innerHTML = `
-        <p style="text-align:center; color:#7a1b1b; font-weight:600;">
-          من فضلك اكتب الاسم ثنائي على الأقل 
-        </p>
-      `;
+      resultBox.innerHTML = `<p style="text-align:center; color:#7a1b1b; font-weight:600;">⚠️ من فضلك اكتب الاسم كاملاً أو رقم التليفون للبحث.</p>`;
       return;
     }
   }
-
-  const matched = students.filter(student => {
-    const normalizedName = normalizeArabic(student.full_name || '');
-    const phone = student.phone || '';
-
-    return normalizedName.includes(normalizedInput) || phone.includes(rawInput);
+  
+  const matched = students.filter(s => {
+    const name = normalizeArabic(s.full_name || '');
+    const phone = s.phone || '';
+    return name.includes(normalizedInput) || phone.includes(rawInput);
   });
-
+  
   if (matched.length === 0) {
-    resultBox.innerHTML = `
-      <p style="text-align:center; color:#7a1b1b;">
-        لا توجد نتائج مطابقة.
-      </p>
-    `;
+    resultBox.innerHTML = `<p style="text-align:center; color:#7a1b1b; padding:20px;">🔍 لا توجد نتائج مطابقة لـ "${rawInput}" في ${currentTerm === 'first' ? 'الترم الأول' : 'الترم الثاني'}.</p>`;
     return;
   }
-
+  
   let html = '';
+  const isSecond = currentTerm === 'second';
+  const borderClass = isSecond ? 'term2-border' : '';
+  
+  for (const s of matched) {
+      const full_name = s.full_name || '-';
+      const phone = s.phone || '-';
+      const age = s.age || '-';
+      const gender = s.gender || '-';
+      const academic_year = s.academic_year || '-';
+      const deacon_rank = s.deacon_rank || '-';
+      const attendance_count = s.attendance_count || '-';
+      const evaluation = s.evaluation || '-';
+      const attendance_grade = s.attendance_grade || '-';
+      const hymns_grade = s.hymns_grade || '-';
+      const coptic_grade = s.coptic_grade || '-';
+      const theology_grade = s.theology_grade || '-';
 
-  matched.forEach(student => {
-    const full_name = student.full_name || '-';
-    const phone = student.phone || '-';
-    const age = student.age || '-';
-    const gender = student.gender || '-';
-    const academic_year = student.academic_year || '-';
-    const deacon_rank = student.deacon_rank || '-';
-    const attendance_count = student.attendance_count || '-';
-    const evaluation = student.evaluation || '-';
-    const attendance_grade = student.attendance_grade || '-';
-    const hymns_grade = student.hymns_grade || '-';
-    const coptic_grade = student.coptic_grade || '-';
-    const theology_grade = student.theology_grade || '-';
-    const total = student.total || '-';
+      //First Term
+      const total = s.total || '-';
 
+      //Second Term
+      const firstterm_grade = s.firstterm_grade || '-';
+      const secondterm_grade = s.secondterm_grade || '-';
+      const total_grade = s.total_grade || '-';
+    
     if (academic_year === 'حضانة') {
       html += `
-        <div class="student-card">
+        <div class="student-card ${borderClass}">
           <p><strong>الاسم:</strong> ${full_name}</p>
           <p><strong>رقم التليفون:</strong> ${phone}</p>
           <p><strong>السنة الدراسية:</strong> ${academic_year}</p>
-          <p><strong>التقدير :</strong> ${evaluation}</p>
+          <p><strong>التقدير:</strong> ${evaluation}</p>
         </div>
       `;
     } else {
+      let totalHtml = '';
+
+      if (currentTerm === 'first') {
+
+          totalHtml = `
+              <div class="total-box">
+                  <strong class="total-first">
+                      مجموع الترم الأول: ${total}
+                  </strong>
+              </div>
+          `;
+
+      } else {
+
+          totalHtml = `
+              <div class="total-box">
+                  <strong class="total-first">
+                      مجموع الترم الأول: ${firstterm_grade}
+                  </strong>
+                  <br>
+
+                  <strong style="color:#1b5e3f;">
+                      مجموع الترم الثاني: ${secondterm_grade}
+                  </strong>
+                  <br>
+
+                  <strong style="color:#4a0e0e;font-size:18px;">
+                      مجموع الترمين: ${total_grade}
+                  </strong>
+              </div>
+          `;
+
+      }
+      
       html += `
-        <div class="student-card">
+        <div class="student-card ${borderClass}">
           <p><strong>الاسم:</strong> ${full_name}</p>
           <p><strong>رقم التليفون:</strong> ${phone}</p>
-          <p><strong>السن:</strong> ${age}</p>
           <p><strong>الجنس:</strong> ${gender}</p>
           <p><strong>السنة الدراسية:</strong> ${academic_year}</p>
           <p><strong>الرتبة الشماسية:</strong> ${deacon_rank}</p>
-          <p><strong>عدد مرات الحضور 8 :</strong> ${attendance_count}</p>
+          <p><strong>عدد مرات الحضور (من 8):</strong> ${attendance_count}</p>
           <p><strong>درجة الحضور:</strong> ${attendance_grade}</p>
-          <p><strong>درجة الالحان 40 :</strong> ${hymns_grade}</p>
-          <p><strong>درجة القبطي 20 :</strong> ${coptic_grade}</p>
-          <p><strong>درجة الطقس 20 :</strong> ${theology_grade}</p>
-          <p><strong>المجموع:</strong> ${total}</p>
+          <p><strong>درجة الألحان (40):</strong> ${hymns_grade}</p>
+          <p><strong>درجة القبطي (20):</strong> ${coptic_grade}</p>
+          <p><strong>درجة الطقس (20):</strong> ${theology_grade}</p>
+          ${totalHtml}
         </div>
       `;
     }
-  });
-
-  html += `
-    <p style="text-align:center; margin-top:12px; font-weight:600;">
-      من فضلك احتفظ بالنتيجة كلقطة شاشة (screenshot)
-    </p>
-  `;
-
+  }
+  
+  html += `<p style="text-align:center; margin-top:20px; padding:10px; background:#f0efe7; border-radius:10px; font-weight:600;">📸 من فضلك احتفظ بالنتيجة كـ (لقطة شاشة) للرجوع إليها</p>`;
   resultBox.innerHTML = html;
 }
 
-/* تحميل الداتا عند فتح الصفحة */
-window.onload = loadData;
+function init() {
+  const firstBtn = document.querySelector('.term-option[data-term="first"]');
+  const secondBtn = document.querySelector('.term-option[data-term="second"]');
+  
+  firstBtn.addEventListener('click', () => switchTerm('first'));
+  secondBtn.addEventListener('click', () => switchTerm('second'));
+  
+  loadTerm1();
+}
+
+window.onload = init;
 </script>
 </body>
-
 </html>
-
