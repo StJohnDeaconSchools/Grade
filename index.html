@@ -367,6 +367,12 @@ const matched = students.filter(s => {
           `;
 
       }
+
+      const attendanceMax =
+    academic_year === 'أولى ابتدائي' ||
+    academic_year === 'تانية ابتدائي'
+        ? 7
+        : 8;
       
       html += `
         <div class="student-card ${borderClass}">
@@ -375,7 +381,7 @@ const matched = students.filter(s => {
           <p><strong>الجنس:</strong> ${gender}</p>
           <p><strong>السنة الدراسية:</strong> ${academic_year}</p>
           <p><strong>الرتبة الشماسية:</strong> ${deacon_rank}</p>
-          <p><strong>عدد مرات الحضور (من 8):</strong> ${attendance_count}</p>
+          <p><strong>عدد مرات الحضور (من ${attendanceMax}):</strong> ${attendance_count}</p>
           <p><strong>درجة الحضور:</strong> ${attendance_grade}</p>
           <p><strong>درجة الألحان (40):</strong> ${hymns_grade}</p>
           <p><strong>درجة القبطي (20):</strong> ${coptic_grade}</p>
